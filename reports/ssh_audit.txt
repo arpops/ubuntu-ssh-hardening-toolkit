@@ -1,0 +1,5 @@
+=== SSH Audit ===
+[OK] Root login is disabled
+[OK] Password authentication disabled
+[INFO] SSH Port: 22
+[WARN] Fail2ban not active
