@@ -1,0 +1,13 @@
+[+] Auditoría de UFW
+------------------------
+Estado: activo
+Acceso: on (low)
+Predeterminado: deny (entrantes), allow (salientes), deny (enrutados)
+Perfiles nuevos: skip
+
+Hasta                      Acción      Desde
+-----                      ------      -----
+22/tcp                     ALLOW IN    Anywhere                  
+22/tcp (v6)                ALLOW IN    Anywhere (v6)             
+
+[OK] UFW activo

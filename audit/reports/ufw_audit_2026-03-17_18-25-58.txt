@@ -1,0 +1,4 @@
+[+] Auditoría de UFW
+------------------------
+Estado: inactivo
+[OK] UFW activo

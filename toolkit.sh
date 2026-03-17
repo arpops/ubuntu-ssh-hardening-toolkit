@@ -1,14 +1,18 @@
 #!/bin/bash
-# toolkit.sh - Herramienta modular de auditoría y bastionado
+# toolkit.sh - Herramienta modular de auditoría y bastionado con reportes automáticos (FASE 5)
 
-# Variables globales
+# -------------------------------
+# Configuración inicial
+# -------------------------------
 TIMESTAMP=$(date +%F_%H-%M-%S)
 REPORT_DIR="reports"
 mkdir -p "$REPORT_DIR"
 
 OUTPUT="$REPORT_DIR/toolkit_report_$TIMESTAMP.txt"
 
-# Funciones para cada módulo
+# -------------------------------
+# Funciones de auditoría
+# -------------------------------
 audit_ssh() {
     echo "[+] Ejecutando auditoría SSH..." | tee -a "$OUTPUT"
     bash audit/ssh_audit.sh | tee -a "$OUTPUT"
@@ -24,6 +28,9 @@ audit_system() {
     bash audit/system_audit.sh | tee -a "$OUTPUT"
 }
 
+# -------------------------------
+# Funciones de hardening
+# -------------------------------
 hardening_ssh() {
     echo "[+] Aplicando hardening SSH..." | tee -a "$OUTPUT"
     sudo bash hardening/ssh_hardening.sh | tee -a "$OUTPUT"
@@ -44,7 +51,31 @@ hardening_system() {
     sudo bash hardening/system_hardening.sh | tee -a "$OUTPUT"
 }
 
+# -------------------------------
+# Función para generar resumen
+# -------------------------------
+generate_summary() {
+    SUMMARY="$REPORT_DIR/summary_$TIMESTAMP.txt"
+    echo "===============================" > "$SUMMARY"
+    echo "       Resumen de Seguridad     " >> "$SUMMARY"
+    echo "Fecha: $(date)" >> "$SUMMARY"
+    echo "===============================" >> "$SUMMARY"
+
+    ROOT_USERS=$(awk -F: '($3==0){print $1}' /etc/passwd)
+    echo "[*] Usuarios con privilegios root: $ROOT_USERS" >> "$SUMMARY"
+
+    UFW_STATUS=$(sudo ufw status | head -n1)
+    echo "[*] Estado de UFW: $UFW_STATUS" >> "$SUMMARY"
+
+    SSH_ACTIVE=$(systemctl is-active ssh 2>/dev/null || echo "no encontrado")
+    echo "[*] SSH activo: $SSH_ACTIVE" >> "$SUMMARY"
+
+    echo "[OK] Resumen generado en $SUMMARY"
+}
+
+# -------------------------------
 # Menú interactivo
+# -------------------------------
 while true; do
     clear
     echo "==============================="
@@ -58,7 +89,7 @@ while true; do
     echo "6) Configurar Fail2ban"
     echo "7) Bastionado básico del sistema"
     echo "8) Ejecutar TODAS las auditorías"
-    echo "9) Ejecutar TODO el hardening"
+    echo "9) Ejecutar TODO el hardening (antes/después + resumen)"
     echo "0) Salir"
     echo "==============================="
     read -p "Selecciona una opción: " option
@@ -71,8 +102,32 @@ while true; do
         5) hardening_ufw ;;
         6) hardening_fail2ban ;;
         7) hardening_system ;;
-        8) audit_ssh; audit_ufw; audit_system ;;
-        9) hardening_ssh; hardening_ufw; hardening_fail2ban; hardening_system ;;
+        8) 
+            echo "[=== Estado ANTES de auditorías ===]" | tee -a "$OUTPUT"
+            audit_ssh
+            audit_ufw
+            audit_system
+            generate_summary
+            ;;
+        9) 
+            echo "[=== Estado ANTES del hardening ===]" | tee -a "$OUTPUT"
+            audit_ssh
+            audit_ufw
+            audit_system
+
+            echo "[=== Aplicando hardening ===]" | tee -a "$OUTPUT"
+            hardening_ssh
+            hardening_ufw
+            hardening_fail2ban
+            hardening_system
+
+            echo "[=== Estado DESPUÉS del hardening ===]" | tee -a "$OUTPUT"
+            audit_ssh
+            audit_ufw
+            audit_system
+
+            generate_summary
+            ;;
         0) echo "Saliendo..."; exit 0 ;;
         *) echo "Opción inválida"; sleep 2 ;;
     esac
